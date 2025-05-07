@@ -1,0 +1,5 @@
+trade: /mnt/30.133_stock_data_raid0/lob_trade_data
+order: /mnt/30.133_stock_data_raid0/lob_order_data
+lob_indicators: mnt/Data/zxt/lob_indicators
+param: /home/xintang/CNIndexFutures/timeseries/lob_indicators/param
+flag: /home/xintang/CNIndexFutures/timeseries/lob_indicators/flag
