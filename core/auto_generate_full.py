@@ -18,10 +18,10 @@ import gc
 
 
 # %% import self_defined
-from core.go_through_book import GoThroughBookStepper
+from core.go_through_book_full import GoThroughBookStepper
 from utils.speedutils import timeit
 from indicators.chatgpt import *
-from core.plot_lob import visualize_order_book
+# from core.plot_lob import visualize_order_book
 
 
 # %%
@@ -56,14 +56,19 @@ class GroupGenerate(GoThroughBookStepper):
     def _init_dataset(self):
         self.dataset = {}
         self.dataset['on_ts_org'] = self.on_ts_org
+        self.dataset['on_ts_d'] = self.on_ts_d
+        self.dataset['on_ts_t'] = self.on_ts_t
         self.dataset['on_side'] = self.on_side
         self.dataset['on_px'] = self.on_px
         self.dataset['on_qty_org'] = self.on_qty_org
         self.dataset['on_qty_remain'] = self.on_qty_remain
+        self.dataset['on_qty_d'] = self.on_qty_d
+        self.dataset['on_qty_t'] = self.on_qty_t
         self.dataset['best_px'] = self.best_px_post_match
         self.dataset['ts'] = 0
         
-        self.list_to_check_valid = ['on_ts_org', 'on_side', 'on_px', 'on_qty_org', 'on_qty_remain']
+        self.list_to_check_valid = ['on_ts_org', 'on_ts_d', 'on_ts_t', 'on_side', 'on_px', 
+                                    'on_qty_org', 'on_qty_remain', 'on_qty_d', 'on_qty_t']
    
     def _get_ind_funcs(self):
         ind_cates = self.param['ind_cates']

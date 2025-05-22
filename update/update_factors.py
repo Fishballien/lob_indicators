@@ -32,7 +32,7 @@ from logutils import FishStyleLogger
 from database_handler import DailyUpdateSender, DailyUpdateReader, DailyUpdateMsgSender
 from loop_check import CheckDb, ProcessUpdateCoordinator
 from dateutils import get_previous_n_trading_day
-from core.generate_by_batch_v1 import BatchGenerate
+from core.updater import IncrementalUpdate as IndicatorInc
 
 
 # %%
@@ -47,7 +47,7 @@ def update_factors(update_name=None, delay=1):
     param_dir = Path(path_config['workflow_param'])
     
     # 读取参数
-    with open(param_dir / 'update_factors' / f'{update_name}.yaml', "r") as file:
+    with open(param_dir / 'update_indicators' / f'{update_name}.yaml', "r") as file:
         params = yaml.safe_load(file)
     # params = toml.load(param_dir / 'update_factors' / f'{update_name}.toml')
     
@@ -67,17 +67,17 @@ def update_factors(update_name=None, delay=1):
     coordinator.set_target_date(target_date)
     
     ## update
+
+    # 更新近10-20天股票ind
+    lob_ind_params = params['lob_indicators']
+    ind_ver_name = lob_ind_params['ind_ver_name']
+    output = lob_ind_params['output']
+    dependency = lob_ind_params['dependency']
         
-    # 用更新的股票ind，计算更新的org + org的历史与inc拼接 + 做时序变换
-    fac_params = params['factors']
-    batch_name = fac_params['batch_name']
-    output = fac_params['output']
-    dependency = fac_params['dependency']
-    
     with coordinator(output, dependency):
         if not coordinator.skip_task:
-            instance = BatchGenerate(batch_name)
-            instance.run()
+            instance = IndicatorInc(ind_ver_name)
+            instance.run(target_date)
 
         
 # %%

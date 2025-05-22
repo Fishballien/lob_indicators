@@ -20,8 +20,8 @@ from datetime import datetime
 
 
 # from go_through_book import process_a, process_d_or_t, check_relocate_best_px, estimate_theoretical_best_price
-from go_through_book import order_dtype, trade_dtype, order_type, trade_type
-from go_through_book import loop_until_next_ts
+from core.go_through_book import order_dtype, trade_dtype, order_type, trade_type
+from core.go_through_book import loop_until_next_ts
 
 
 # %%
