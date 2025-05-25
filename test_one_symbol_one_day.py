@@ -162,13 +162,15 @@ ind_name = 'GGCutPriceRange'
 
 param = {
     # 'target_ts': {'seconds': 60},
-    'target_ts': {'minutes': 15},
+    'target_ts': {'minutes': 1},
     # 'l_thres': 200000,
     }
 
 # batch_name = 'cc_top5_ver0'
 # batch_name = 'Batch10_fix_best_241218_selected_f64'
-batch_name = 'test_plot_lob'
+# batch_name = 'test_plot_lob'
+batch_name = 'Batch18_exnoon_250524'
+# batch_name = 'Batch18_250425'
 param_dir = Path(r'D:/CNIndexFutures/timeseries/lob_indicators/param')
 shared_param_dir = param_dir / 'shared'
 

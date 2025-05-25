@@ -64,12 +64,11 @@ class GroupGenerate(GoThroughBookStepper):
         self.dataset['on_qty_remain'] = self.on_qty_remain
         self.dataset['on_qty_d'] = self.on_qty_d
         self.dataset['on_qty_t'] = self.on_qty_t
-        self.dataset['on_amt_t'] = self.on_amt_t  # 新增：成交金额
         self.dataset['best_px'] = self.best_px_post_match
         self.dataset['ts'] = 0
         
         self.list_to_check_valid = ['on_ts_org', 'on_ts_d', 'on_ts_t', 'on_side', 'on_px', 
-                                    'on_qty_org', 'on_qty_remain', 'on_qty_d', 'on_qty_t', 'on_amt_t']  # 修改：新增on_amt_t
+                                    'on_qty_org', 'on_qty_remain', 'on_qty_d', 'on_qty_t']
    
     def _get_ind_funcs(self):
         ind_cates = self.param['ind_cates']
@@ -246,3 +245,5 @@ class GGCutOrderAmount(GroupGenerate):
             else:
                 view_dataset[col] = ts_dataset[col]
         return view_dataset, 0
+
+
