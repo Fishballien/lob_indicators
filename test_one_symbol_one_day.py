@@ -145,7 +145,7 @@ date = '2024-12-17'
 # ind_cate = 'core.auto_generate'
 # ind_name = 'GroupGenerate'
 
-ind_cate = 'core.auto_generate'
+ind_cate = 'core.auto_generate_full'
 ind_name = 'GGCutPriceRange'
 
 # ind_cate = 'core.auto_generate'
@@ -169,8 +169,9 @@ param = {
 # batch_name = 'cc_top5_ver0'
 # batch_name = 'Batch10_fix_best_241218_selected_f64'
 # batch_name = 'test_plot_lob'
-batch_name = 'Batch18_exnoon_250524'
+# batch_name = 'Batch18_exnoon_250524'
 # batch_name = 'Batch18_250425'
+batch_name = 'Batch26_250525'
 param_dir = Path(r'D:/CNIndexFutures/timeseries/lob_indicators/param')
 shared_param_dir = param_dir / 'shared'
 
