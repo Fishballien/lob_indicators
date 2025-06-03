@@ -38,6 +38,14 @@ class Side(Enum):
     N = 2
     
     
+class TradeDirection(Enum):
+    AB = 0  # 主买 (Active Buy)
+    PB = 1  # 被动买 (Passive Buy)
+    AS = 2  # 主卖 (Active Sell)
+    PS = 3  # 被动卖 (Passive Sell)
+    N = 4   # 集合竞价 (Auction)
+    
+    
 class DataType(Enum):
     Order = 0
     Trade = 1

@@ -21,7 +21,7 @@ from abc import ABC, abstractmethod
 
 
 from core.loop import FixedTimeIntervalLoop
-from utils.market import get_exchange, Action, Exchange, Side, DataType, TradeDirection, MINIMUM_SIZE_FILTER, DefaultPx
+from utils.market import get_exchange, Action, Exchange, Side, DataType, MINIMUM_SIZE_FILTER, DefaultPx
 from utils.timeutils import adjust_timestamp_precision
 
 
@@ -60,6 +60,11 @@ class GoThroughBook:
         order_named_arr['qty'] = order_data['OrderQty'].values
         order_named_arr['side'] = np.where(order_data['Side'].values == b'B', Side.Bid.value, Side.Ask.value)
         order_named_arr['ordertype'] = np.where(order_data['OrderType'].values == b'D', b'D', b'A').astype('S1')
+# =============================================================================
+#         seqnum_in_trade = order_data['SeqNum'].isin(trade_data['SeqNum'])
+#         ts_after_930 = order_data['OrderTime'].dt.time >= pd.to_datetime('09:30:00').time()
+#         order_named_arr['is_trade_fill'] = (seqnum_in_trade & ts_after_930).astype(np.int32)
+# =============================================================================
 
         trade_named_arr = np.zeros(len(trade_data), dtype=trade_dtype)
         trade_named_arr['tradp'] = (np.round(trade_data['tradp'].values / 10) * 10).astype(np.int64)
@@ -73,6 +78,9 @@ class GoThroughBook:
         ]
         choices = [Side.Bid.value, Side.Ask.value, Side.N.value]
         trade_named_arr['side'] = np.select(conditions, choices, default=np.nan)
+        # trade_named_arr['side'] = np.where(trade_data['Side'].values == b'B', Side.Bid.value, Side.Ask.value)
+        # open_auction = trade_data['datetime'].dt.time < pd.to_datetime('09:30:00').time()
+        # close_auction = trade_data['datetime'].dt.time > pd.to_datetime('14:57:00').time()
         pre_defined_auction = trade_named_arr['side'] == Side.N.value
         trade_named_arr['is_auction'] = pre_defined_auction.astype(np.int32)
         
@@ -85,13 +93,14 @@ class GoThroughBook:
         
     def _init_containers(self, order_data):
         unique_orderno = np.sort(np.unique(order_data['OrderNo'])).astype(np.int64)
+        # orderno_mapping = {orderno: idx for idx, orderno in enumerate(unique_orderno)} # TODO: 改numbadict
         orderno_mapping = typed.Dict.empty(
             key_type=types.int64,
             value_type=types.int64
         )
         for idx, orderno in enumerate(unique_orderno):
             orderno_mapping[orderno] = idx
-        on_ts_org = np.zeros_like(unique_orderno, dtype='i8')
+        on_ts_org = np.zeros_like(unique_orderno, dtype='i8') #'M8[ms]'
         on_ts_d = np.zeros_like(unique_orderno, dtype='i8')
         on_ts_t = np.zeros_like(unique_orderno, dtype='i8')
         on_side = np.full_like(unique_orderno, fill_value=-1, dtype='int32')
@@ -100,13 +109,11 @@ class GoThroughBook:
         on_qty_remain = np.zeros_like(unique_orderno, dtype=np.int64)
         on_qty_d = np.zeros_like(unique_orderno, dtype=np.int64)
         on_qty_t = np.zeros_like(unique_orderno, dtype=np.int64)
-        on_amt_t = np.zeros_like(unique_orderno, dtype=np.int64)
-        
-        # 新增：trade方向数组，用于记录每个order的成交方向
-        on_trade_direction = np.full_like(unique_orderno, fill_value=-1, dtype='int32')
+        on_amt_t = np.zeros_like(unique_orderno, dtype=np.int64)  # 新增：成交金额
 
         unique_prices = np.sort(np.unique(self.order_named_arr['px'])).astype(np.int64)
         len_of_price = len(unique_prices)
+        # price_mapping = {px: idx for idx, px in enumerate(unique_prices)}
         price_mapping = typed.Dict.empty(
             key_type=types.int64,
             value_type=types.int64
@@ -119,8 +126,8 @@ class GoThroughBook:
         best_px = np.zeros(2, dtype=np.int64)
         best_px_post_match = np.zeros(2, dtype=np.int64)
         best_if_lost = np.zeros(2, dtype=np.int32)
-        best_if_lost[0] = 0
-        best_if_lost[1] = 0
+        best_if_lost[0] = 0  # True as integer 1
+        best_if_lost[1] = 0  # True as integer 1
         
         self.unique_orderno = unique_orderno
         self.orderno_mapping = orderno_mapping
@@ -133,8 +140,7 @@ class GoThroughBook:
         self.on_qty_remain = on_qty_remain
         self.on_qty_d = on_qty_d
         self.on_qty_t = on_qty_t
-        self.on_amt_t = on_amt_t
-        self.on_trade_direction = on_trade_direction  # 新增
+        self.on_amt_t = on_amt_t  # 新增
         
         self.unique_prices = unique_prices
         self.price_mapping = price_mapping
@@ -152,8 +158,7 @@ class GoThroughBook:
                             on_ts_org=self.on_ts_org, on_ts_d=self.on_ts_d, on_ts_t=self.on_ts_t, 
                             on_side=self.on_side, on_px=self.on_px, 
                             on_qty_org=self.on_qty_org, on_qty_remain=self.on_qty_remain,
-                            on_qty_d=self.on_qty_d, on_qty_t=self.on_qty_t, on_amt_t=self.on_amt_t,
-                            on_trade_direction=self.on_trade_direction,  # 新增
+                            on_qty_d=self.on_qty_d, on_qty_t=self.on_qty_t, on_amt_t=self.on_amt_t,  # 修改：新增on_amt_t
                             best_px=self.best_px, best_px_post_match=self.best_px_post_match, 
                             best_if_lost=self.best_if_lost, 
                             unique_prices=self.unique_prices, lob_bid=self.lob_bid, lob_ask=self.lob_ask,
@@ -197,7 +202,7 @@ class GoThroughBookStepper(GoThroughBook, ABC):
 # %%
 order_dtype = np.dtype([
     ('orderno', 'int64'), ('px', 'int64'), ('qty', 'int64'),
-    ('side', 'int32'), ('ordertype', 'S1')
+    ('side', 'int32'), ('ordertype', 'S1') #, ('is_trade_fill', 'int32')
 ])
 order_type = from_dtype(order_dtype)
 
@@ -207,30 +212,6 @@ trade_dtype = np.dtype([
     ('side', 'int32'), ('is_auction', 'int32')
 ])
 trade_type = from_dtype(trade_dtype)
-
-
-# %% 新增：计算trade方向的函数
-@njit(types.int32(types.int32, types.int32))
-def get_trade_direction(trade_side, order_side):
-    """
-    根据trade的side（主动方向）和order的side计算trade direction
-    trade_side: trade数据中的side，表示主动方向
-    order_side: order的side
-    """
-    if trade_side == Side.N.value:  # 集合竞价
-        return TradeDirection.N.value
-    elif trade_side == Side.Bid.value:  # 主动买方
-        if order_side == Side.Bid.value:
-            return TradeDirection.AB.value  # 主买
-        else:
-            return TradeDirection.PS.value  # 被动卖
-    elif trade_side == Side.Ask.value:  # 主动卖方
-        if order_side == Side.Ask.value:
-            return TradeDirection.AS.value  # 主卖
-        else:
-            return TradeDirection.PB.value  # 被动买
-    else:
-        return -1  # 异常情况
 
 
 # %% loop
@@ -282,14 +263,14 @@ def process_a(orderno, ts, side, px, qty, on_ts_org, on_side, on_px, on_qty_org,
 @njit(types.void(
     types.int64, types.int64, types.int32, types.int64, types.int64, types.int64[:], types.int64[:], types.int64[:], 
     types.int64[:], types.int64[:], types.int64[:], types.int64[:], types.int64[:], 
-    types.int64[:], types.int32[:], types.int64[:], types.int32[:],  # 修改：新增on_trade_direction
+    types.int64[:], types.int32[:], types.int64[:],  # 修改：新增on_amt_t
     DictType(types.int64, types.int64), DictType(types.int64, types.int64),
-    types.int32, types.int32, types.int32, types.int32  # 修改：新增trade_side参数
+    types.int32, types.int32, types.int32
 ))
 def process_d_or_t(orderno, ts, side, px, qty, on_ts_d, on_ts_t, on_qty_remain, on_qty_d, on_qty_t, on_px,
-                   lob_bid, lob_ask, best_px, best_if_lost, on_amt_t, on_trade_direction,  # 修改：新增on_trade_direction
+                   lob_bid, lob_ask, best_px, best_if_lost, on_amt_t,  # 修改：新增on_amt_t参数
                    orderno_mapping, price_mapping, 
-                   action_type, exchange, is_auction, trade_side):  # 修改：新增trade_side参数
+                   action_type, exchange, is_auction):
     # update no related
     if orderno not in orderno_mapping:
         print('d or t', orderno)
@@ -298,32 +279,50 @@ def process_d_or_t(orderno, ts, side, px, qty, on_ts_d, on_ts_t, on_qty_remain, 
     on_qty_remain[target_no_idx] -= qty
     if action_type == Action.T.value:
         on_qty_t[target_no_idx] += qty
-        # 更新成交金额
+        # 新增：更新成交金额
         on_amt_t[target_no_idx] += px * qty
         if on_ts_t[target_no_idx] == 0:
             on_ts_t[target_no_idx] = ts
-        # 新增：记录trade方向
-        if on_trade_direction[target_no_idx] == -1:  # 第一次成交时记录trade方向
-            on_trade_direction[target_no_idx] = get_trade_direction(trade_side, side)
     elif action_type == Action.D.value:
         on_qty_d[target_no_idx] += qty
         if on_ts_d[target_no_idx] == 0:
             on_ts_d[target_no_idx] = ts
+    # try:
+    #     assert on_qty_remain[target_no_idx] >= 0
+    # except:
+    #     breakpoint()
     
     # update lob related
     ## 沪市非集合竞价成交，没有对应真实order，只有每笔trade反推出的order，导致每笔order价格不同
     ## 所以要根据trade价格反推找到order px
     use_data_px = action_type == Action.T.value and exchange == Exchange.SH.value and is_auction == 0
     order_px = px if use_data_px else on_px[target_no_idx]
-    
+    # try:
+    #     assert order_px > 0
+    # except:
+    #     breakpoint()
     if order_px == 0:
         ## 若order px为0，说明是沪市反推的order，且trade找不到对应的order，则加回一开始消耗掉的qty
+        ##（一开始数据没洗好有这个情况，现在可能已经没有了）
         on_qty_remain[target_no_idx] += qty
+        # 如果是成交且order_px为0，需要回滚成交金额
+        # if action_type == Action.T.value:
+        #     on_amt_t[target_no_idx] -= px * qty / 10000.0
+        # if action_type == Action.D.value:
+        #     on_qty_remain[target_no_idx] += qty
+        # else:
+        #     try:
+        #         assert order_px > 0
+        #     except:
+        #         breakpoint()
     else:
         lob_idx = price_mapping[order_px]
         target_lob = lob_bid if side == Side.Bid.value else lob_ask
         target_lob[lob_idx] -= qty
+        # try:
         assert target_lob[lob_idx] >= 0
+        # except:
+        #     breakpoint()
         # update best price
         update_best_px(side, order_px, target_lob[lob_idx], best_px, best_if_lost)
 
@@ -368,6 +367,8 @@ def estimate_theoretical_best_price(best_px, best_px_post_match, price_mapping, 
         best_px_post_match[0] = best_px[0]
         best_px_post_match[1] = best_px[1]
     else:
+    # print('best_px', best_px)
+    # print('best_px_post_match', best_px_post_match)
         best_bid_idx = price_mapping[best_bid]
         best_ask_idx = price_mapping[best_ask]
         len_lob = prices.size
@@ -403,14 +404,14 @@ def estimate_theoretical_best_price(best_px, best_px_post_match, price_mapping, 
     order_type[:], trade_type[:],
     DictType(types.int64, types.int64), DictType(types.int64, types.int64),
     types.int64[:], types.int64[:], types.int64[:], types.int32[:], types.int64[:], 
-    types.int64[:], types.int64[:], types.int64[:], types.int64[:], types.int64[:], types.int32[:],  # 修改：新增on_trade_direction
+    types.int64[:], types.int64[:], types.int64[:], types.int64[:], types.int64[:],  # 修改：新增on_amt_t
     types.int64[:], types.int64[:], types.int32[:], types.int64[:], types.int64[:], types.int64[:], types.int32
 ))
 def loop_until_next_ts(start_idx, nxt_target_ts, len_combined, data_type_arr, index_arr, time_arr,
                        order_named_arr, trade_named_arr, 
                        orderno_mapping, price_mapping,
                        on_ts_org, on_ts_d, on_ts_t, on_side, on_px, 
-                       on_qty_org, on_qty_remain, on_qty_d, on_qty_t, on_amt_t, on_trade_direction,  # 修改：新增on_trade_direction
+                       on_qty_org, on_qty_remain, on_qty_d, on_qty_t, on_amt_t,  # 修改：新增on_amt_t
                        best_px, best_px_post_match, best_if_lost, unique_prices, lob_bid, lob_ask, exchange):      
     ts_pre = 0
     
@@ -445,9 +446,9 @@ def loop_until_next_ts(start_idx, nxt_target_ts, len_combined, data_type_arr, in
             elif ordertype == b'D':
                 process_d_or_t(orderno, ts, side, px, qty, on_ts_d, on_ts_t, 
                                on_qty_remain, on_qty_d, on_qty_t, on_px,
-                               lob_bid, lob_ask, best_px, best_if_lost, on_amt_t, on_trade_direction,  # 修改：新增on_trade_direction
+                               lob_bid, lob_ask, best_px, best_if_lost, on_amt_t,  # 修改：新增on_amt_t
                                orderno_mapping, price_mapping, 
-                               Action.D.value, exchange, 0, Side.N.value)  # 修改：新增trade_side参数，删除用N
+                               Action.D.value, exchange, 0)
         if data_type == 1:
             row = trade_named_arr[idx]
             tradp = row['tradp']
@@ -459,11 +460,9 @@ def loop_until_next_ts(start_idx, nxt_target_ts, len_combined, data_type_arr, in
             for target_order_no, target_side in zip((buyno, sellno), (0, 1)):
                 process_d_or_t(target_order_no, ts, target_side, tradp, tradv, on_ts_d, on_ts_t, 
                                on_qty_remain, on_qty_d, on_qty_t, on_px,
-                               lob_bid, lob_ask, best_px, best_if_lost, on_amt_t, on_trade_direction,  # 修改：新增on_trade_direction
+                               lob_bid, lob_ask, best_px, best_if_lost, on_amt_t,  # 修改：新增on_amt_t
                                orderno_mapping, price_mapping, 
-                               Action.T.value, exchange, is_auction, side)  # 修改：新增trade_side参数
-        
-        ts_pre = ts
+                               Action.T.value, exchange, is_auction)
     return len_combined
     
 
@@ -471,11 +470,11 @@ def loop_until_next_ts_wrapper(start_idx, nxt_target_ts, len_combined, data_type
                                order_named_arr, trade_named_arr, 
                                orderno_mapping, price_mapping,
                                on_ts_org, on_ts_d, on_ts_t, on_side, on_px, 
-                               on_qty_org, on_qty_remain, on_qty_d, on_qty_t, on_amt_t, on_trade_direction,  # 修改：新增on_trade_direction
+                               on_qty_org, on_qty_remain, on_qty_d, on_qty_t, on_amt_t,  # 修改：新增on_amt_t
                                best_px, best_px_post_match, best_if_lost, unique_prices, lob_bid, lob_ask, exchange):
     return loop_until_next_ts(start_idx, nxt_target_ts, len_combined, data_type_arr, index_arr, time_arr,
                               order_named_arr, trade_named_arr, 
                               orderno_mapping, price_mapping,
                               on_ts_org, on_ts_d, on_ts_t, on_side, on_px, 
-                              on_qty_org, on_qty_remain, on_qty_d, on_qty_t, on_amt_t, on_trade_direction,  # 修改：新增on_trade_direction
+                              on_qty_org, on_qty_remain, on_qty_d, on_qty_t, on_amt_t,  # 修改：新增on_amt_t
                               best_px, best_px_post_match, best_if_lost, unique_prices, lob_bid, lob_ask, exchange)
