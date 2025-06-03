@@ -64,14 +64,12 @@ class GroupGenerate(GoThroughBookStepper):
         self.dataset['on_qty_remain'] = self.on_qty_remain
         self.dataset['on_qty_d'] = self.on_qty_d
         self.dataset['on_qty_t'] = self.on_qty_t
-        self.dataset['on_amt_t'] = self.on_amt_t  # 成交金额
-        self.dataset['on_trade_direction'] = self.on_trade_direction  # 新增：成交方向
+        self.dataset['on_amt_t'] = self.on_amt_t  # 新增：成交金额
         self.dataset['best_px'] = self.best_px_post_match
         self.dataset['ts'] = 0
         
         self.list_to_check_valid = ['on_ts_org', 'on_ts_d', 'on_ts_t', 'on_side', 'on_px', 
-                                    'on_qty_org', 'on_qty_remain', 'on_qty_d', 'on_qty_t', 'on_amt_t', 
-                                    'on_trade_direction']  # 修改：新增on_trade_direction
+                                    'on_qty_org', 'on_qty_remain', 'on_qty_d', 'on_qty_t', 'on_amt_t']  # 修改：新增on_amt_t
    
     def _get_ind_funcs(self):
         ind_cates = self.param['ind_cates']
@@ -245,67 +243,6 @@ class GGCutOrderAmount(GroupGenerate):
         for col in ts_dataset:
             if col in self.list_to_check_valid:
                 view_dataset[col] = ts_dataset[col][idx_in_amount_thres]
-            else:
-                view_dataset[col] = ts_dataset[col]
-        return view_dataset, 0
-
-
-# %% 新增：基于成交方向的视图切分类
-class GGCutTradeDirection(GroupGenerate):
-    """基于成交方向进行数据筛选的视图切分器"""
-    
-    def _cut_view(self, view_name, view_info, ts_dataset):
-        trade_directions = view_info.get('trade_directions', [0, 1, 2, 3, 4])  # 默认包含所有方向
-        
-        best_px = ts_dataset['best_px']
-        on_trade_direction = ts_dataset['on_trade_direction']
-        
-        bid1 = best_px[0]
-        ask1 = best_px[1]
-        
-        if bid1 == 0 or ask1 == 0:
-            return None, 1
-        
-        # 筛选指定成交方向的订单
-        idx_in_trade_direction = np.isin(on_trade_direction, trade_directions)
-        
-        view_dataset = {}
-        for col in ts_dataset:
-            if col in self.list_to_check_valid:
-                view_dataset[col] = ts_dataset[col][idx_in_trade_direction]
-            else:
-                view_dataset[col] = ts_dataset[col]
-        return view_dataset, 0
-
-
-class GGCutPriceRangeNTradeDirection(GroupGenerate):
-    """结合价格范围和成交方向进行数据筛选的视图切分器"""
-    
-    def _cut_view(self, view_name, view_info, ts_dataset):
-        price_range = view_info['price_range']
-        trade_directions = view_info.get('trade_directions', [0, 1, 2, 3, 4])
-        
-        best_px = ts_dataset['best_px']
-        on_px = ts_dataset['on_px']
-        on_trade_direction = ts_dataset['on_trade_direction']
-        
-        bid1 = best_px[0]
-        ask1 = best_px[1]
-        
-        if bid1 == 0 or ask1 == 0:
-            return None, 1
-        
-        mid_price = (bid1 + ask1) / 2
-        lower_bound = mid_price * (1 - price_range)
-        upper_bound = mid_price * (1 + price_range)
-        
-        idx_in_price_range = (on_px >= lower_bound) & (on_px <= upper_bound)
-        idx_in_trade_direction = np.isin(on_trade_direction, trade_directions)
-        
-        view_dataset = {}
-        for col in ts_dataset:
-            if col in self.list_to_check_valid:
-                view_dataset[col] = ts_dataset[col][idx_in_price_range & idx_in_trade_direction]
             else:
                 view_dataset[col] = ts_dataset[col]
         return view_dataset, 0
