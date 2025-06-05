@@ -65,13 +65,22 @@ class GroupGenerate(GoThroughBookStepper):
         self.dataset['on_qty_d'] = self.on_qty_d
         self.dataset['on_qty_t'] = self.on_qty_t
         self.dataset['on_amt_t'] = self.on_amt_t  # 成交金额
-        self.dataset['on_trade_direction'] = self.on_trade_direction  # 新增：成交方向
+        
+        # 新增：主动、被动和集合竞价成交量及金额
+        self.dataset['on_qty_t_a'] = self.on_qty_t_a  # 主动成交量
+        self.dataset['on_amt_t_a'] = self.on_amt_t_a  # 主动成交金额
+        self.dataset['on_qty_t_p'] = self.on_qty_t_p  # 被动成交量
+        self.dataset['on_amt_t_p'] = self.on_amt_t_p  # 被动成交金额
+        self.dataset['on_qty_t_n'] = self.on_qty_t_n  # 集合竞价成交量
+        self.dataset['on_amt_t_n'] = self.on_amt_t_n  # 集合竞价成交金额
+        
         self.dataset['best_px'] = self.best_px_post_match
         self.dataset['ts'] = 0
         
         self.list_to_check_valid = ['on_ts_org', 'on_ts_d', 'on_ts_t', 'on_side', 'on_px', 
-                                    'on_qty_org', 'on_qty_remain', 'on_qty_d', 'on_qty_t', 'on_amt_t', 
-                                    'on_trade_direction']  # 修改：新增on_trade_direction
+                                    'on_qty_org', 'on_qty_remain', 'on_qty_d', 'on_qty_t', 'on_amt_t',
+                                    'on_qty_t_a', 'on_amt_t_a', 'on_qty_t_p', 'on_amt_t_p', 
+                                    'on_qty_t_n', 'on_amt_t_n']  # 修改：新增主动被动集合竞价字段
    
     def _get_ind_funcs(self):
         ind_cates = self.param['ind_cates']
@@ -250,15 +259,14 @@ class GGCutOrderAmount(GroupGenerate):
         return view_dataset, 0
 
 
-# %% 新增：基于成交方向的视图切分类
-class GGCutTradeDirection(GroupGenerate):
-    """基于成交方向进行数据筛选的视图切分器"""
+# %% 基于成交类型的视图切分类
+class GGCutTradeType(GroupGenerate):
+    """基于成交类型进行数据筛选的视图切分器（主动/被动/集合竞价）"""
     
     def _cut_view(self, view_name, view_info, ts_dataset):
-        trade_directions = view_info.get('trade_directions', [0, 1, 2, 3, 4])  # 默认包含所有方向
+        trade_types = view_info.get('trade_types', ['active', 'passive', 'auction'])  # 默认包含所有类型
         
         best_px = ts_dataset['best_px']
-        on_trade_direction = ts_dataset['on_trade_direction']
         
         bid1 = best_px[0]
         ask1 = best_px[1]
@@ -266,28 +274,34 @@ class GGCutTradeDirection(GroupGenerate):
         if bid1 == 0 or ask1 == 0:
             return None, 1
         
-        # 筛选指定成交方向的订单
-        idx_in_trade_direction = np.isin(on_trade_direction, trade_directions)
+        # 根据成交类型筛选订单
+        idx_mask = np.zeros(len(ts_dataset['on_px']), dtype=bool)
+        
+        if 'active' in trade_types:
+            idx_mask |= (ts_dataset['on_qty_t_a'] > 0)
+        if 'passive' in trade_types:
+            idx_mask |= (ts_dataset['on_qty_t_p'] > 0)
+        if 'auction' in trade_types:
+            idx_mask |= (ts_dataset['on_qty_t_n'] > 0)
         
         view_dataset = {}
         for col in ts_dataset:
             if col in self.list_to_check_valid:
-                view_dataset[col] = ts_dataset[col][idx_in_trade_direction]
+                view_dataset[col] = ts_dataset[col][idx_mask]
             else:
                 view_dataset[col] = ts_dataset[col]
         return view_dataset, 0
 
 
-class GGCutPriceRangeNTradeDirection(GroupGenerate):
-    """结合价格范围和成交方向进行数据筛选的视图切分器"""
+class GGCutPriceRangeNTradeType(GroupGenerate):
+    """结合价格范围和成交类型进行数据筛选的视图切分器"""
     
     def _cut_view(self, view_name, view_info, ts_dataset):
         price_range = view_info['price_range']
-        trade_directions = view_info.get('trade_directions', [0, 1, 2, 3, 4])
+        trade_types = view_info.get('trade_types', ['active', 'passive', 'auction'])
         
         best_px = ts_dataset['best_px']
         on_px = ts_dataset['on_px']
-        on_trade_direction = ts_dataset['on_trade_direction']
         
         bid1 = best_px[0]
         ask1 = best_px[1]
@@ -300,12 +314,33 @@ class GGCutPriceRangeNTradeDirection(GroupGenerate):
         upper_bound = mid_price * (1 + price_range)
         
         idx_in_price_range = (on_px >= lower_bound) & (on_px <= upper_bound)
-        idx_in_trade_direction = np.isin(on_trade_direction, trade_directions)
+        
+        # 根据成交类型筛选订单
+        idx_in_trade_type = np.zeros(len(on_px), dtype=bool)
+        
+        if 'active' in trade_types:
+            idx_in_trade_type |= (ts_dataset['on_qty_t_a'] > 0)
+        if 'passive' in trade_types:
+            idx_in_trade_type |= (ts_dataset['on_qty_t_p'] > 0)
+        if 'auction' in trade_types:
+            idx_in_trade_type |= (ts_dataset['on_qty_t_n'] > 0)
         
         view_dataset = {}
         for col in ts_dataset:
             if col in self.list_to_check_valid:
-                view_dataset[col] = ts_dataset[col][idx_in_price_range & idx_in_trade_direction]
+                view_dataset[col] = ts_dataset[col][idx_in_price_range & idx_in_trade_type]
             else:
                 view_dataset[col] = ts_dataset[col]
         return view_dataset, 0
+
+
+# %% 移除原有的基于成交方向的视图切分类，替换为基于成交类型的实现
+# 以下是原来基于 trade_direction 的类，现在已被上面基于成交类型的类替代
+
+# class GGCutTradeDirection(GroupGenerate):
+#     """已废弃：原基于成交方向进行数据筛选的视图切分器"""
+#     pass
+
+# class GGCutPriceRangeNTradeDirection(GroupGenerate):
+#     """已废弃：原结合价格范围和成交方向进行数据筛选的视图切分器"""
+#     pass
