@@ -21,28 +21,28 @@ from utils.speedutils import timeit
 
 
 # %%
-@njit(types.void(
-    types.int64[:],  # best_px
-    types.int32[:],  # on_side
-    types.int64[:],  # on_px
-    types.int64[:],  # on_qty_org
-    types.int64[:],  # on_qty_remain
-    types.int64[:],  # on_qty_d
-    types.int64[:],  # on_qty_t
-    types.int64[:],  # on_amt_t
-    types.int64[:],  # on_qty_t_a (主动成交量)
-    types.int64[:],  # on_amt_t_a (主动成交金额)
-    types.int64[:],  # on_qty_t_p (被动成交量)
-    types.int64[:],  # on_amt_t_p (被动成交金额)
-    types.int64[:],  # on_qty_t_n (集合竞价成交量)
-    types.int64[:],  # on_amt_t_n (集合竞价成交金额)
-    types.int64[:],  # on_ts_org
-    types.int64,     # ts
-    types.float64[:],  # value_thresholds
-    types.float64[:],  # data_types
-    types.float64[:],  # time_ranges
-    types.float64[:, :]  # curr_dataset
-))
+# @njit(types.void(
+#     types.int64[:],  # best_px
+#     types.int32[:],  # on_side
+#     types.int64[:],  # on_px
+#     types.int64[:],  # on_qty_org
+#     types.int64[:],  # on_qty_remain
+#     types.int64[:],  # on_qty_d
+#     types.int64[:],  # on_qty_t
+#     types.int64[:],  # on_amt_t
+#     types.int64[:],  # on_qty_t_a (主动成交量)
+#     types.int64[:],  # on_amt_t_a (主动成交金额)
+#     types.int64[:],  # on_qty_t_p (被动成交量)
+#     types.int64[:],  # on_amt_t_p (被动成交金额)
+#     types.int64[:],  # on_qty_t_n (集合竞价成交量)
+#     types.int64[:],  # on_amt_t_n (集合竞价成交金额)
+#     types.int64[:],  # on_ts_org
+#     types.int64,     # ts
+#     types.float64[:],  # value_thresholds
+#     types.float64[:],  # data_types
+#     types.float64[:],  # time_ranges
+#     types.float64[:, :]  # curr_dataset
+# ))
 def TimeRangeDataTypes(best_px, on_side, on_px, on_qty_org, on_qty_remain, on_qty_d, on_qty_t, on_amt_t,
                        on_qty_t_a, on_amt_t_a, on_qty_t_p, on_amt_t_p, on_qty_t_n, on_amt_t_n,
                        on_ts_org, ts, value_thresholds, data_types, time_ranges, curr_dataset):
@@ -137,4 +137,6 @@ def TimeRangeDataTypes(best_px, on_side, on_px, on_qty_org, on_qty_remain, on_qt
                     curr_dataset[index, col] = total_amount
                 
                 index += 1
+    if ts==1547119500000:
+        breakpoint()
 

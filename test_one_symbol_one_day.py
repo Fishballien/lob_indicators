@@ -112,8 +112,8 @@ data_dir = Path(r'D:\CNIndexFutures\timeseries\lob_indicators\sample_data')
 # symbol = "000001.XSHE"
 # date = '2024-04-26'
 
-symbol = "600600.XSHG"
-date = '2024-04-26'
+# symbol = "600600.XSHG"
+# date = '2024-04-26'
 
 # symbol = '000016.XSHE'
 # date = '2024-04-26'
@@ -135,6 +135,9 @@ date = '2024-04-26'
 
 # symbol = "300036.XSHE"
 # date = '2024-11-04'
+
+symbol = "600262.XSHG"
+date = '2019-01-10'
 
 # ind_cate = 'indicators.total_amount.indv0_total_amount'
 # ind_name = 'Indv0'
