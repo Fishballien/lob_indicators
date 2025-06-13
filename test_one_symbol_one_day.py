@@ -174,7 +174,7 @@ param = {
 # batch_name = 'test_plot_lob'
 # batch_name = 'Batch18_exnoon_250524'
 # batch_name = 'Batch18_250425'
-batch_name = 'Batch30_250603'
+batch_name = 'Batch34_250610'
 param_dir = Path(r'D:/CNIndexFutures/timeseries/lob_indicators/param')
 shared_param_dir = param_dir / 'shared'
 
