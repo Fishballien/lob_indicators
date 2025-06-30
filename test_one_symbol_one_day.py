@@ -130,14 +130,14 @@ data_dir = Path(r'D:\CNIndexFutures\timeseries\lob_indicators\sample_data')
 # symbol = '688137.XSHG'
 # date = '2024-04-26'
 
-# symbol = '000023.XSHE'
-# date = '2024-04-26'
+symbol = '000023.XSHE'
+date = '2024-04-26'
 
 # symbol = "300036.XSHE"
 # date = '2024-11-04'
 
-symbol = "600262.XSHG"
-date = '2019-01-10'
+# symbol = "600262.XSHG"
+# date = '2019-01-10'
 
 # ind_cate = 'indicators.total_amount.indv0_total_amount'
 # ind_name = 'Indv0'
@@ -174,7 +174,8 @@ param = {
 # batch_name = 'test_plot_lob'
 # batch_name = 'Batch18_exnoon_250524'
 # batch_name = 'Batch18_250425'
-batch_name = 'Batch34_250610'
+batch_name = 'Batch20_250508'
+# batch_name = 'Batch34_250610'
 param_dir = Path(r'D:/CNIndexFutures/timeseries/lob_indicators/param')
 shared_param_dir = param_dir / 'shared'
 

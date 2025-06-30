@@ -27,11 +27,11 @@ sys.path.append(str(project_dir))
 
 
 # %%
-from dirutils import load_path_config
-from logutils import FishStyleLogger
-from database_handler import DailyUpdateSender, DailyUpdateReader, DailyUpdateMsgSender
-from loop_check import CheckDb, ProcessUpdateCoordinator
-from dateutils import get_previous_n_trading_day
+from utils.dirutils import load_path_config
+from utils.logutils import FishStyleLogger
+from update.database_handler import DailyUpdateSender, DailyUpdateReader, DailyUpdateMsgSender
+from update.loop_check import CheckDb, ProcessUpdateCoordinator
+from utils.dateutils import get_previous_n_trading_day
 from core.updater import IncrementalUpdate as IndicatorInc
 
 
